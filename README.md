@@ -191,7 +191,3 @@ EntryPoints/
 
 - Unity 2021.1 or newer
 - No external dependencies
-
-## License
-
-[Your License Here]
