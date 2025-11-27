@@ -1,0 +1,41 @@
+using UnityEditor;
+using UnityEngine;
+
+namespace DGP.EntryPoints
+{
+    [CreateAssetMenu(fileName = "StartupSceneLauncher", menuName = "DGP/Startup Scene Launcher")]
+    public class StartupSceneLauncherSO : ScriptableObject, IEntryPoint
+    {
+        [SerializeField] private SceneAsset startupScene;
+
+        public string DisplayName => name;
+
+        public string StartupScenePath
+        {
+            get {
+#if UNITY_EDITOR
+                return startupScene != null ? AssetDatabase.GetAssetPath(startupScene) : string.Empty;
+#else
+                return string.Empty;
+#endif
+            }
+        }
+
+        public virtual void OnEntryPointSelected()
+        {
+#if UNITY_EDITOR
+            if (startupScene == null) {
+                Debug.LogWarning($"[{name}] No startup scene assigned.");
+                return;
+            }
+            
+            UnityEditor.SceneManagement.EditorSceneManager.playModeStartScene = startupScene;
+#endif
+        }
+
+        public virtual void Bootstrap()
+        {
+            // noop
+        }
+    }
+}

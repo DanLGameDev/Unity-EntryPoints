@@ -1,0 +1,11 @@
+{
+  "name": "entrypoints",
+  "version": "0.1.0",
+  "displayName": "Entry Points",
+  "description": "",
+  "unity": "2023.1",
+  "author": {
+    "name": "Daniel Loughmiller",
+    "url": "https://github.com/DanLGameDev/"
+  }
+}
