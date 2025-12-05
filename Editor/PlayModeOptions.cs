@@ -39,10 +39,10 @@ namespace DGP.EntryPoints.Editor
             var icon = EditorGUIUtility.IconContent("d_SceneAsset Icon").image as Texture2D;
             var content = new MainToolbarContent(currentName, icon, "Select Entry Point");
             
-            return new MainToolbarButton(content, ShowDropdown);
+            return new MainToolbarDropdown(content, ShowDropdown);
         }
 
-        private static void ShowDropdown()
+        private static void ShowDropdown(Rect dropdownRect)
         {
             var menu = new GenericMenu();
             var entryPoints = GetOrderedEntryPoints();
@@ -66,7 +66,7 @@ namespace DGP.EntryPoints.Editor
                 );
             }
             
-            menu.ShowAsContext();
+            menu.DropDown(dropdownRect);
         }
 
         private static void SelectEntryPoint(string path)
@@ -84,8 +84,8 @@ namespace DGP.EntryPoints.Editor
                 EntryPoints.ActiveEntryPoint = config;
             }
             
-            // Force toolbar refresh by triggering repaint
-            EditorApplication.delayCall += () => EditorWindow.GetWindow<SceneView>()?.Repaint();
+            // Refresh the toolbar element to update the displayed text
+            MainToolbar.Refresh(ElementPath);
         }
 
         private static string GetCurrentEntryPointName()
