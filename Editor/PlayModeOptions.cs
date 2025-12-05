@@ -2,21 +2,19 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEditor;
+using UnityEditor.Toolbars;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace DGP.EntryPoints.Editor
 {
-    [InitializeOnLoad]
-    public static class PlayModeOptions
+    public class PlayModeOptions
     {
-        private static GUIStyle popupStyle;
+        private const string ElementPath = "EntryPoint/Selector";
+        private const string ConfigPrefsKey = "EntryPoint_ActiveConfig";
+        
         private static List<string> cachedEntryPointPaths;
         private static bool needsRefresh = true;
-        
-        private const string ConfigPrefsKey = "EntryPoint_ActiveConfig";
         
         private static string SelectedConfigPath
         {
@@ -24,96 +22,80 @@ namespace DGP.EntryPoints.Editor
             set => EditorPrefs.SetString(ConfigPrefsKey, value);
         }
 
-        static PlayModeOptions()
+        [InitializeOnLoadMethod]
+        private static void Initialize()
         {
-            EditorApplication.update += DelayedInitialize;
-        }
-
-        private static void DelayedInitialize()
-        {
-            EditorApplication.update -= DelayedInitialize;
-            
             if (!string.IsNullOrEmpty(SelectedConfigPath)) {
                 var config = AssetDatabase.LoadAssetAtPath<ScriptableObject>(SelectedConfigPath) as IEntryPoint;
                 config?.OnEntryPointSelected();
                 EntryPoints.ActiveEntryPoint = config;
             }
-
-            var toolbarType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.Toolbar");
-            var toolbarFieldInfo = toolbarType.GetField("get", BindingFlags.Public | BindingFlags.Static);
-            var toolbarObject = toolbarFieldInfo?.GetValue(null);
-
-            if (toolbarObject != null) {
-                var root = toolbarType.GetField("m_Root", BindingFlags.NonPublic | BindingFlags.Instance);
-                var rawRoot = root?.GetValue(toolbarObject);
-                var mRoot = rawRoot as VisualElement;
-                
-                RegisterCallback("ToolbarZoneLeftAlign", OnToolbarGUI);
-
-                void RegisterCallback(string rootName, Action cb)
-                {
-                    var toolbarZone = mRoot?.Q(rootName);
-                    
-                    if (toolbarZone != null) {
-                        var parent = new VisualElement() {
-                            style =
-                            {
-                                flexGrow = 1,
-                                flexDirection = FlexDirection.Row,
-                            }
-                        };
-                        var container = new IMGUIContainer();
-                        container.style.flexGrow = 1;
-                        container.onGUIHandler += () => cb?.Invoke();
-                        parent.Add(container);
-                        toolbarZone.Add(parent);
-                    }
-                }
-            }
         }
 
-        private static void InitializeStyle()
+        [MainToolbarElement(ElementPath, defaultDockPosition = MainToolbarDockPosition.Left)]
+        public static MainToolbarElement CreateEntryPointSelector()
         {
-            popupStyle = new GUIStyle(EditorStyles.popup) {
-                fixedHeight = 21,
-                fontSize = 12
-            };
+            var currentName = GetCurrentEntryPointName();
+            var icon = EditorGUIUtility.IconContent("d_SceneAsset Icon").image as Texture2D;
+            var content = new MainToolbarContent(currentName, icon, "Select Entry Point");
+            
+            return new MainToolbarButton(content, ShowDropdown);
         }
 
-        private static void OnToolbarGUI()
+        private static void ShowDropdown()
         {
-            if (popupStyle == null)
-                InitializeStyle();
-
+            var menu = new GenericMenu();
             var entryPoints = GetOrderedEntryPoints();
             
-            GUILayout.FlexibleSpace();
+            // Add [Current Scene] option
+            menu.AddItem(
+                new GUIContent("[Current Scene]"),
+                string.IsNullOrEmpty(SelectedConfigPath),
+                () => SelectEntryPoint(null)
+            );
             
-            // Always add [Current Scene] as first option
-            var displayNames = new List<string> { "[Current Scene]" };
-            displayNames.AddRange(entryPoints.Select(path => 
-                ObjectNames.NicifyVariableName(System.IO.Path.GetFileNameWithoutExtension(path))));
-
-            var selectedIndex = string.IsNullOrEmpty(SelectedConfigPath)
-                ? 0  // Default to [Current Scene]
-                : entryPoints.FindIndex(p => p == SelectedConfigPath) + 1;  // +1 because of [Current Scene]
-
-            var newIndex = EditorGUILayout.Popup(selectedIndex, displayNames.ToArray(), popupStyle, GUILayout.Width(150));
-
-            if (newIndex != selectedIndex) {
-                if (newIndex == 0) {
-                    // [Current Scene] selected - clear startup scene
-                    SelectedConfigPath = string.Empty;
-                    EntryPoints.ActiveEntryPoint = null;
-                    UnityEditor.SceneManagement.EditorSceneManager.playModeStartScene = null;
-                } else {
-                    // Entry point selected
-                    SelectedConfigPath = entryPoints[newIndex - 1];  // -1 because of [Current Scene]
-                    var config = AssetDatabase.LoadAssetAtPath<ScriptableObject>(SelectedConfigPath) as IEntryPoint;
-                    config?.OnEntryPointSelected();
-                    EntryPoints.ActiveEntryPoint = config;
-                }
+            menu.AddSeparator("");
+            
+            // Add all entry points
+            foreach (var path in entryPoints) {
+                var displayName = ObjectNames.NicifyVariableName(System.IO.Path.GetFileNameWithoutExtension(path));
+                menu.AddItem(
+                    new GUIContent(displayName),
+                    SelectedConfigPath == path,
+                    () => SelectEntryPoint(path)
+                );
             }
+            
+            menu.ShowAsContext();
+        }
+
+        private static void SelectEntryPoint(string path)
+        {
+            if (string.IsNullOrEmpty(path)) {
+                // [Current Scene] selected - clear startup scene
+                SelectedConfigPath = string.Empty;
+                EntryPoints.ActiveEntryPoint = null;
+                UnityEditor.SceneManagement.EditorSceneManager.playModeStartScene = null;
+            } else {
+                // Entry point selected
+                SelectedConfigPath = path;
+                var config = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path) as IEntryPoint;
+                config?.OnEntryPointSelected();
+                EntryPoints.ActiveEntryPoint = config;
+            }
+            
+            // Force toolbar refresh by triggering repaint
+            EditorApplication.delayCall += () => EditorWindow.GetWindow<SceneView>()?.Repaint();
+        }
+
+        private static string GetCurrentEntryPointName()
+        {
+            if (string.IsNullOrEmpty(SelectedConfigPath))
+                return "[Current Scene]";
+            
+            return ObjectNames.NicifyVariableName(
+                System.IO.Path.GetFileNameWithoutExtension(SelectedConfigPath)
+            );
         }
 
         private static List<string> GetOrderedEntryPoints()
@@ -139,13 +121,25 @@ namespace DGP.EntryPoints.Editor
                 .OrderBy(path => ObjectNames.NicifyVariableName(System.IO.Path.GetFileNameWithoutExtension(path)))
                 .ToList();
         }
+        
+        public static void MarkForRefresh()
+        {
+            needsRefresh = true;
+        }
     }
 
     public class EntryPointAssetPostprocessor : AssetPostprocessor
     {
-        private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
+        private static void OnPostprocessAllAssets(
+            string[] importedAssets, 
+            string[] deletedAssets, 
+            string[] movedAssets, 
+            string[] movedFromAssetPaths)
         {
-            var allChangedAssets = importedAssets.Concat(movedAssets).Concat(movedFromAssetPaths).Concat(deletedAssets);
+            var allChangedAssets = importedAssets
+                .Concat(movedAssets)
+                .Concat(movedFromAssetPaths)
+                .Concat(deletedAssets);
 
             foreach (var assetPath in allChangedAssets) {
                 if (!assetPath.EndsWith(".asset")) 
@@ -153,9 +147,7 @@ namespace DGP.EntryPoints.Editor
                 
                 var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(assetPath);
                 if (asset is IEntryPoint || deletedAssets.Contains(assetPath)) {
-                    typeof(PlayModeOptions)
-                        .GetField("needsRefresh", BindingFlags.Static | BindingFlags.NonPublic)
-                        ?.SetValue(null, true);
+                    PlayModeOptions.MarkForRefresh();
                     return;
                 }
             }
