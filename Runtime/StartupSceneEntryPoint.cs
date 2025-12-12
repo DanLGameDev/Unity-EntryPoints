@@ -28,9 +28,8 @@ namespace DGP.EntryPoints
                 Debug.LogWarning($"[{name}] No startup scene assigned.");
                 return;
             }
-    
+            
             UnityEditor.SceneManagement.EditorSceneManager.playModeStartScene = startupScene;
-            Debug.Log($"[{name}] Set playModeStartScene to: {startupScene.name}"); // Add this
 #endif
         }
 

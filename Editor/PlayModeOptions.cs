@@ -76,7 +76,6 @@ namespace DGP.EntryPoints.Editor
                 SelectedConfigPath = string.Empty;
                 EntryPoints.ActiveEntryPoint = null;
                 UnityEditor.SceneManagement.EditorSceneManager.playModeStartScene = null;
-                Debug.Log("[EntryPoint] Cleared startup scene"); // Add this
             } else {
                 // Entry point selected
                 SelectedConfigPath = path;
@@ -84,10 +83,10 @@ namespace DGP.EntryPoints.Editor
                 if (config != null) {
                     config.OnEntryPointSelected();
                     EntryPoints.ActiveEntryPoint = config;
-                    Debug.Log($"[EntryPoint] Selected: {config.DisplayName}"); // Add this
                 }
             }
-            
+    
+            // Refresh the toolbar element to update the displayed text
             MainToolbar.Refresh(ElementPath);
         }
 
