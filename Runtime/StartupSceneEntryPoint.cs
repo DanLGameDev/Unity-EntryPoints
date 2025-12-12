@@ -4,7 +4,7 @@ using UnityEngine;
 namespace DGP.EntryPoints
 {
     [CreateAssetMenu(fileName = "StartupSceneLauncher", menuName = "DGP/Startup Scene Launcher")]
-    public class StartupSceneLauncherSO : ScriptableObject, IEntryPoint
+    public class StartupSceneEntryPoint : ScriptableObject, IEntryPoint
     {
         [SerializeField] private SceneAsset startupScene;
 
@@ -28,8 +28,9 @@ namespace DGP.EntryPoints
                 Debug.LogWarning($"[{name}] No startup scene assigned.");
                 return;
             }
-            
+    
             UnityEditor.SceneManagement.EditorSceneManager.playModeStartScene = startupScene;
+            Debug.Log($"[{name}] Set playModeStartScene to: {startupScene.name}"); // Add this
 #endif
         }
 
