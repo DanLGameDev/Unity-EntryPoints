@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace DGP.EntryPoints
@@ -10,17 +11,6 @@ namespace DGP.EntryPoints
 
         public string DisplayName => name;
 
-        public string StartupScenePath
-        {
-            get {
-#if UNITY_EDITOR
-                return startupScene != null ? AssetDatabase.GetAssetPath(startupScene) : string.Empty;
-#else
-                return string.Empty;
-#endif
-            }
-        }
-
         public virtual void OnEntryPointSelected()
         {
 #if UNITY_EDITOR
@@ -29,7 +19,7 @@ namespace DGP.EntryPoints
                 return;
             }
             
-            UnityEditor.SceneManagement.EditorSceneManager.playModeStartScene = startupScene;
+            EditorSceneManager.playModeStartScene = startupScene;
 #endif
         }
 

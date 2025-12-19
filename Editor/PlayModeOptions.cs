@@ -113,13 +113,13 @@ namespace DGP.EntryPoints.Editor
 
         private static void RefreshEntryPointsCache()
         {
-            cachedEntryPointPaths = AssetDatabase.FindAssets("t:ScriptableObject")
-                .Select(AssetDatabase.GUIDToAssetPath)
-                .Where(path =>
-                {
-                    var asset = AssetDatabase.LoadAssetAtPath<ScriptableObject>(path);
-                    return asset is IEntryPoint;
-                })
+            var entryPointTypes = TypeCache.GetTypesDerivedFrom<IEntryPoint>();
+
+            cachedEntryPointPaths = entryPointTypes
+                .Where(t => !t.IsAbstract && !t.IsInterface && typeof(ScriptableObject).IsAssignableFrom(t))
+                .SelectMany(type => AssetDatabase.FindAssets($"t:{type.Name}")
+                    .Select(AssetDatabase.GUIDToAssetPath))
+                .Distinct()
                 .OrderBy(path => ObjectNames.NicifyVariableName(System.IO.Path.GetFileNameWithoutExtension(path)))
                 .ToList();
         }
