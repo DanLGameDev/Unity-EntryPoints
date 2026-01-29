@@ -11,7 +11,10 @@ namespace DGP.EntryPoints.Editor
     public class PlayModeOptions
     {
         private const string ElementPath = "EntryPoint/Selector";
-        private const string ConfigPrefsKey = "EntryPoint_ActiveConfig";
+
+        // Use project-specific key so selection doesn't persist across projects
+        // PlayerSettings.productGUID is stable even if the project is moved
+        private static string ConfigPrefsKey => "EntryPoint_ActiveConfig_" + PlayerSettings.productGUID;
         
         private static List<string> cachedEntryPointPaths;
         private static bool needsRefresh = true;
